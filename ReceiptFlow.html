@@ -556,18 +556,88 @@
 
     .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
 
+    /* ── Mobile nav bar ── */
+    #mobile-nav {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .mobile-logo {
+      font-weight: 600;
+      font-size: 15px;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mobile-logo .sidebar-logo-icon {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    .mobile-nav-btn {
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      font-size: 12.5px;
+      font-family: inherit;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .mobile-nav-btn.active {
+      background: #e8f0fb;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
     /* ── Mobile ── */
     @media (max-width: 640px) {
-      #sidebar { width: 56px; min-width: 56px; }
-      .sidebar-logo-text,
-      .nav-item span { display: none; }
-      .nav-item { justify-content: center; padding: 10px; }
-      .panel { padding: 16px; }
+      #sidebar { display: none; }
+      #mobile-nav { display: flex; }
+
+      body { flex-direction: column; overflow: auto; height: auto; min-height: 100vh; }
+      #main { height: auto; overflow-y: visible; flex: 1; }
+
+      .panel { padding: 16px; max-width: 100%; }
       .form-row, .form-row.three { grid-template-columns: 1fr; }
+      .type-selector-row { flex-wrap: wrap; }
+
+      #modal { max-height: 92vh; border-radius: 12px 12px 0 0; }
+      .staging-table { font-size: 12px; }
+      .staging-table input, .staging-table select { font-size: 12px; padding: 4px 5px; }
+      .staging-table input[type="date"] { width: 110px; }
+      .staging-table input[type="number"] { width: 64px; }
+
+      #toast-container { left: 12px; right: 12px; bottom: 12px; }
+      .toast { max-width: 100%; }
     }
   </style>
 </head>
 <body>
+
+<!-- ═══════════ MOBILE NAV ═══════════ -->
+<header id="mobile-nav">
+  <div class="mobile-logo">
+    <div class="sidebar-logo-icon">📒</div>
+    家計簿
+  </div>
+  <button class="mobile-nav-btn active" onclick="switchPanel('scan')" id="mnav-scan">掃描</button>
+  <button class="mobile-nav-btn" onclick="switchPanel('manual')" id="mnav-manual">手動</button>
+  <button class="mobile-nav-btn" onclick="switchPanel('settings')" id="mnav-settings">設定</button>
+</header>
 
 <!-- ═══════════ SIDEBAR ═══════════ -->
 <nav id="sidebar">
@@ -905,8 +975,11 @@ function debounceSave(field, value) {
 function switchPanel(name) {
   document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  document.querySelectorAll('.mobile-nav-btn').forEach(function(b) { b.classList.remove('active'); });
   document.getElementById('panel-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
+  var mNav = document.getElementById('mnav-' + name);
+  if (mNav) mNav.classList.add('active');
 }
 
 // ── Default type ────────────────────────────────────────
