@@ -2,6 +2,11 @@
 
 個人與家庭收據掃描及支出追蹤工具。透過 AI 辨識收據圖片，自動擷取品項資訊，一鍵上傳至 Google 試算表。
 
+## 連結
+
+- **應用程式：** https://ericlutw.github.io/kakeibo/index.html
+- **Apps Script 後端：** https://script.google.com/macros/s/AKfycbzAZgygwrPV4m2VKlzhkUkC-xhvk2O35yHGGZ-wLpAxXhORPUN7hCaaOE2XDzIMgP3QsA/exec
+
 ## 功能
 
 - **AI 收據掃描** — 上傳收據圖片，透過 Gemini API 自動辨識商家、品項、金額
