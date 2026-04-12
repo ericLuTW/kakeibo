@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家計簿</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --sidebar-bg: #ffffff;
+      --card: #ffffff;
+      --border: #d2d2d7;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --text: #1d1d1f;
+      --text2: #3d3d3f;
+      --muted: #86868b;
+      --danger: #ff3b30;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --radius: 10px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 200px;
+      min-width: 200px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      padding: 20px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13.5px;
+      color: var(--text2);
+      transition: background 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      user-select: none;
+    }
+
+    .nav-item:hover { background: var(--bg); }
+    .nav-item.active { background: #e8f0fb; color: var(--accent); font-weight: 500; }
+    .nav-item .nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.75; }
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    .sidebar-bottom {
+      padding: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Main Area ── */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    .panel {
+      display: none;
+      padding: 32px;
+      max-width: 780px;
+    }
+
+    .panel.active { display: block; }
+
+    .panel-title {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Form controls ── */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,113,227,0.12);
+    }
+
+    input[type="password"] { letter-spacing: 0.12em; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+    .form-field { margin-bottom: 12px; }
+
+    .helper-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.5;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s;
+      user-select: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover { background: #eaeaec; }
+
+    .btn-danger {
+      background: #fff0f0;
+      color: var(--danger);
+      border: 1px solid #ffc9c7;
+    }
+
+    .btn-danger:hover { background: #ffe4e3; }
+
+    .btn-ghost {
+      background: none;
+      color: var(--accent);
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+
+    .btn-ghost:hover { background: #e8f0fb; }
+
+    .btn-icon {
+      padding: 6px;
+      border-radius: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-icon:hover { background: var(--bg); color: var(--danger); }
+
+    /* ── Default Type selector ── */
+    .type-selector-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .type-selector-row label {
+      margin: 0;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .type-selector-row select { max-width: 120px; }
+
+    /* ── Upload Zone ── */
+    #upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fafafa;
+    }
+
+    #upload-zone:hover { border-color: var(--accent); background: #f0f6ff; }
+    #upload-zone.dragover { border-color: var(--accent); background: #e8f0fb; }
+
+    .upload-zone-icon { font-size: 32px; margin-bottom: 10px; }
+
+    .upload-zone-text {
+      font-size: 14px;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    .upload-zone-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #file-input { display: none; }
+
+    #image-preview-wrap {
+      display: none;
+      margin-top: 16px;
+    }
+
+    #image-preview {
+      max-height: 300px;
+      max-width: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ── Scan actions ── */
+    .scan-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .security-note {
+      margin-top: 16px;
+      padding: 12px 14px;
+      background: #f9f9f9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Staging badge ── */
+    #staging-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    .view-staging-wrap {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Settings ── */
+    .settings-group { margin-bottom: 24px; }
+
+    .settings-group-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: var(--text);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .input-with-btn {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .input-with-btn input { flex: 1; }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 13.5px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+      max-width: 320px;
+      animation: toastIn 0.2s ease-out;
+      border-left: 4px solid var(--border);
+    }
+
+    .toast.success { border-left-color: var(--success); }
+    .toast.error   { border-left-color: var(--danger); }
+    .toast.info    { border-left-color: var(--accent); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Staging Modal ── */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    #modal-overlay.open {
+      display: flex;
+      animation: overlayIn 0.2s ease;
+    }
+
+    @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+    #modal {
+      background: var(--card);
+      border-radius: var(--radius) var(--radius) 0 0;
+      width: 100%;
+      max-width: 1100px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      animation: modalUp 0.25s cubic-bezier(0.22,1,0.36,1);
+      box-shadow: 0 -4px 32px rgba(0,0,0,0.15);
+    }
+
+    @keyframes modalUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--muted);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+    }
+
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 12px;
+    }
+
+    /* ── Staging Table ── */
+    .staging-table-wrap { overflow-x: auto; }
+
+    .staging-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .staging-table th {
+      text-align: left;
+      padding: 8px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .staging-table td {
+      padding: 4px 4px;
+      border-bottom: 1px solid #f0f0f2;
+      vertical-align: middle;
+    }
+
+    .staging-table tr:nth-child(even) td { background: #fafafa; }
+
+    .staging-table input,
+    .staging-table select {
+      padding: 5px 7px;
+      font-size: 13px;
+      border-radius: 6px;
+      min-width: 0;
+    }
+
+    .staging-table input[type="date"] { width: 130px; }
+    .staging-table input[type="text"] { width: 100%; min-width: 80px; }
+    .staging-table input[type="number"] { width: 80px; }
+    .staging-table select { min-width: 80px; }
+    .staging-table td:last-child { width: 36px; text-align: center; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      #sidebar { width: 56px; min-width: 56px; }
+      .sidebar-logo-text,
+      .nav-item span { display: none; }
+      .nav-item { justify-content: center; padding: 10px; }
+      .panel { padding: 16px; }
+      .form-row, .form-row.three { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">
+      <span id="logo-icon">🧾</span>
+    </div>
+    <span class="sidebar-logo-text">家計簿</span>
+  </div>
+
+  <div class="sidebar-nav">
+    <button class="nav-item active" onclick="switchPanel('scan')" id="nav-scan">
+      <i data-lucide="camera" class="nav-icon"></i>
+      <span>掃描收據</span>
+    </button>
+    <button class="nav-item" onclick="switchPanel('manual')" id="nav-manual">
+      <i data-lucide="pen-line" class="nav-icon"></i>
+      <span>手動輸入</span>
+    </button>
+
+    <div class="nav-divider"></div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <button class="nav-item" onclick="switchPanel('settings')" id="nav-settings">
+      <i data-lucide="settings" class="nav-icon"></i>
+      <span>設定</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════ MAIN AREA ═══════════ -->
+<main id="main">
+
+  <!-- ── Panel: 掃描收據 ── -->
+  <div class="panel active" id="panel-scan">
+    <div class="panel-title">掃描收據</div>
+
+    <div class="card">
+      <div class="type-selector-row">
+        <label for="scan-default-type">預設類型</label>
+        <select id="scan-default-type" onchange="saveDefaultType(this.value)">
+          <option value="個人">個人</option>
+          <option value="家庭">家庭</option>
+        </select>
+      </div>
+
+      <div id="upload-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="upload-zone-icon">📷</div>
+        <div class="upload-zone-text">拖曳收據圖片至此，或點擊選擇</div>
+        <div class="upload-zone-sub">支援 JPG、PNG、HEIC 等圖片格式</div>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+      </div>
+
+      <div id="image-preview-wrap">
+        <img id="image-preview" src="" alt="收據預覽">
+      </div>
+
+      <div class="scan-actions">
+        <button class="btn btn-primary" id="btn-scan" onclick="startScan()" style="display:none;">
+          <i data-lucide="scan-search" style="width:15px;height:15px;"></i>
+          <span id="btn-scan-text">AI 掃描</span>
+        </button>
+      </div>
+
+      <div class="security-note">
+        🔒 本工具僅供個人在本機使用。Gemini API 金鑰與所有資料僅儲存在此瀏覽器的本機儲存空間（localStorage），不會上傳至任何伺服器。請勿在共用電腦上儲存 API 金鑰。
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: 手動輸入 ── -->
+  <div class="panel" id="panel-manual">
+    <div class="panel-title">手動輸入</div>
+
+    <div class="card">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="m-date">日期</label>
+          <input type="date" id="m-date">
+        </div>
+        <div class="form-field">
+          <label for="m-merchant">商家</label>
+          <input type="text" id="m-merchant" placeholder="商家名稱">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="m-type">類型</label>
+          <select id="m-type">
+            <option value="個人">個人</option>
+            <option value="家庭">家庭</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="m-category">類別</label>
+          <select id="m-category">
+            <option value="餐飲">餐飲</option>
+            <option value="交通">交通</option>
+            <option value="購物">購物</option>
+            <option value="娛樂">娛樂</option>
+            <option value="醫療">醫療</option>
+            <option value="水電費">水電費</option>
+            <option value="辦公用品">辦公用品</option>
+            <option value="住宿">住宿</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="m-price">金額</label>
+          <input type="number" id="m-price" placeholder="0" min="0" step="0.01">
+        </div>
+        <div class="form-field">
+          <label for="m-currency">幣別</label>
+          <select id="m-currency">
+            <option value="TWD">TWD</option>
+            <option value="USD">USD</option>
+            <option value="JPY" selected>JPY</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="HKD">HKD</option>
+            <option value="CNY">CNY</option>
+            <option value="KRW">KRW</option>
+            <option value="SGD">SGD</option>
+            <option value="AUD">AUD</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="m-item">品項 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="m-item" placeholder="請輸入品項名稱（必填）">
+      </div>
+
+      <div class="form-field">
+        <label for="m-notes">備註</label>
+        <input type="text" id="m-notes" placeholder="選填">
+      </div>
+
+      <button class="btn btn-primary" onclick="addManualRow()">
+        <i data-lucide="plus" style="width:15px;height:15px;"></i>
+        新增至暫存區
+      </button>
+    </div>
+
+    <div class="view-staging-wrap">
+      <button class="btn btn-secondary" onclick="openModal()" style="width:100%;">
+        <i data-lucide="table" style="width:15px;height:15px;"></i>
+        查看暫存區 (<span id="staging-count-manual">0</span> 筆)
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Panel: 設定 ── -->
+  <div class="panel" id="panel-settings">
+    <div class="panel-title">設定</div>
+
+    <div class="card">
+      <div class="settings-group">
+        <div class="settings-group-title">Gemini API</div>
+        <div class="form-field">
+          <label for="s-gemini-key">Gemini API 金鑰</label>
+          <div class="input-with-btn">
+            <input type="password" id="s-gemini-key" placeholder="請貼上你的 Gemini API 金鑰"
+                   oninput="debounceSave('gemini_key', this.value)">
+            <button class="btn btn-danger" onclick="clearGeminiKey()" style="white-space:nowrap;flex-shrink:0;">
+              清除金鑰
+            </button>
+          </div>
+          <div class="helper-text">
+            前往 <strong>Google AI Studio（aistudio.google.com）</strong> 建立 API 金鑰。<br>
+            此工具供個人使用。金鑰將儲存在此瀏覽器的本機儲存空間中，請勿在共用電腦上保存。
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Google Apps Script</div>
+        <div class="form-field">
+          <label for="s-script-url">已部署的 Web App 網址</label>
+          <div class="input-with-btn">
+            <input type="text" id="s-script-url" placeholder="https://script.google.com/macros/s/..."
+                   oninput="debounceSave('script_url', this.value)">
+            <button class="btn btn-secondary" onclick="testScriptUrl()" style="white-space:nowrap;flex-shrink:0;">
+              測試狀態
+            </button>
+          </div>
+          <div class="helper-text">
+            前往 <strong>script.google.com</strong>，部署 Code.gs 為網頁應用程式後取得此網址。<br>
+            按下「測試狀態」將在新分頁開啟此網址，確認是否出現 <em>ReceiptFlow Apps Script is running ✓</em>。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════ STAGING MODAL ═══════════ -->
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="modal">
+    <div class="modal-header">
+      <div class="modal-title">暫存區 — 確認後上傳至 Google 試算表</div>
+      <button class="modal-close" onclick="closeModal()" title="關閉">
+        <i data-lucide="x" style="width:18px;height:18px;"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="staging-table-wrap">
+        <table class="staging-table" id="staging-table">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>商家</th>
+              <th>類型</th>
+              <th>類別</th>
+              <th style="min-width:140px;">品項</th>
+              <th>金額</th>
+              <th>幣別</th>
+              <th style="min-width:100px;">備註</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="staging-tbody"></tbody>
+        </table>
+        <div id="staging-empty" class="empty-state" style="display:none;">
+          <div class="empty-state-icon">📭</div>
+          暫存區目前沒有資料
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="addBlankRow()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i>
+        新增一列
+      </button>
+      <button class="btn btn-primary" id="btn-upload" onclick="uploadStaging()">
+        <i data-lucide="upload" style="width:14px;height:14px;"></i>
+        <span id="btn-upload-text">送出 0 筆到 Google 試算表</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TOAST CONTAINER ═══════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══════════ SCRIPT ═══════════ -->
+<script>
+// ── Constants ──────────────────────────────────────────
+const CATEGORIES = ['餐飲', '交通', '購物', '娛樂', '醫療', '水電費', '辦公用品', '住宿', '其他'];
+const CURRENCIES = ['TWD', 'USD', 'JPY', 'EUR', 'GBP', 'HKD', 'CNY', 'KRW', 'SGD', 'AUD'];
+const LS_GEMINI  = 'receiptflow_gemini_key';
+const LS_URL     = 'receiptflow_script_url';
+const LS_TYPE    = 'receiptflow_default_type';
+const LS_STAGING = 'receiptflow_staging_rows';
+
+// ── State ───────────────────────────────────────────────
+let stagingRows = [];
+let currentImageBase64 = null;
+let currentImageMime   = null;
+let debounceTimers = {};
+
+// ── Init ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  loadSettings();
+  restoreStaging();
+  setDefaultDate();
+  renderStagingCount();
+
+  // Init Lucide icons if available
+  if (typeof lucide !== 'undefined') {
+    try { lucide.createIcons(); } catch(e) {}
+  }
+});
+
+function loadSettings() {
+  const key = lsGet(LS_GEMINI);
+  const url = lsGet(LS_URL);
+  const type = lsGet(LS_TYPE) || '個人';
+
+  if (key) document.getElementById('s-gemini-key').value = key;
+  if (url) document.getElementById('s-script-url').value = url;
+
+  document.getElementById('scan-default-type').value = type;
+  document.getElementById('m-type').value = type;
+}
+
+function restoreStaging() {
+  try {
+    const raw = lsGet(LS_STAGING);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) stagingRows = parsed;
+    }
+  } catch(e) {
+    stagingRows = [];
+  }
+}
+
+function setDefaultDate() {
+  document.getElementById('m-date').value = todayStr();
+}
+
+// ── localStorage helpers ────────────────────────────────
+function lsGet(key) {
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); } catch(e) {}
+}
+
+function lsRemove(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+}
+
+// ── Debounce save ───────────────────────────────────────
+function debounceSave(field, value) {
+  clearTimeout(debounceTimers[field]);
+  debounceTimers[field] = setTimeout(function() {
+    if (field === 'gemini_key') lsSet(LS_GEMINI, value);
+    if (field === 'script_url') lsSet(LS_URL, value);
+  }, 500);
+}
+
+// ── Navigation ──────────────────────────────────────────
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+}
+
+// ── Default type ────────────────────────────────────────
+function saveDefaultType(val) {
+  lsSet(LS_TYPE, val);
+  document.getElementById('m-type').value = val;
+}
+
+// ── Date util ───────────────────────────────────────────
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function randId() {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+// ── Settings actions ────────────────────────────────────
+function clearGeminiKey() {
+  lsRemove(LS_GEMINI);
+  document.getElementById('s-gemini-key').value = '';
+  showToast('Gemini API 金鑰已清除。', 'info');
+}
+
+function testScriptUrl() {
+  const url = document.getElementById('s-script-url').value.trim();
+  if (!url) {
+    showToast('請先填寫 Apps Script 網址。', 'error');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ── File upload & drag ──────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    processImageFile(file);
+  } else {
+    showToast('請選擇圖片檔案。', 'error');
+  }
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processImageFile(file);
+  e.target.value = '';
+}
+
+function processImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      compressImage(img, file.type, function(base64, mime) {
+        if (!base64) {
+          showToast('圖片處理失敗，請重新選擇圖片。', 'error');
+          return;
+        }
+        currentImageBase64 = base64;
+        currentImageMime   = mime;
+
+        const preview = document.getElementById('image-preview');
+        preview.src = 'data:' + mime + ';base64,' + base64;
+        document.getElementById('image-preview-wrap').style.display = 'block';
+        document.getElementById('btn-scan').style.display = 'inline-flex';
+
+        if (typeof lucide !== 'undefined') {
+          try { lucide.createIcons(); } catch(e) {}
+        }
+      });
+    };
+    img.onerror = function() {
+      showToast('圖片處理失敗，請重新選擇圖片。', 'error');
+    };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function() {
+    showToast('圖片讀取失敗，請重新選擇圖片。', 'error');
+  };
+  reader.readAsDataURL(file);
+}
+
+function compressImage(img, originalMime, callback) {
+  try {
+    const MAX = 1600;
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+
+    if (w > MAX || h > MAX) {
+      if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+      else        { w = Math.round(w * MAX / h); h = MAX; }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+
+    // Use PNG for transparency, JPEG otherwise
+    const useJpeg = !(originalMime === 'image/png' && hasTransparency(ctx, w, h));
+    const outMime = useJpeg ? 'image/jpeg' : 'image/png';
+    const quality = useJpeg ? 0.8 : undefined;
+
+    const dataUrl = quality !== undefined
+      ? canvas.toDataURL(outMime, quality)
+      : canvas.toDataURL(outMime);
+
+    const base64 = dataUrl.split(',')[1];
+    callback(base64, outMime);
+  } catch(e) {
+    callback(null, null);
+  }
+}
+
+function hasTransparency(ctx, w, h) {
+  try {
+    const data = ctx.getImageData(0, 0, Math.min(w, 100), Math.min(h, 100)).data;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 255) return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ── Gemini API call ─────────────────────────────────────
+async function startScan() {
+  const apiKey = lsGet(LS_GEMINI);
+  if (!apiKey) {
+    showToast('Gemini API 金鑰未填寫。', 'error');
+    switchPanel('settings');
+    return;
+  }
+  if (!currentImageBase64) {
+    showToast('請先選擇收據圖片。', 'error');
+    return;
+  }
+
+  const btn      = document.getElementById('btn-scan');
+  const btnText  = document.getElementById('btn-scan-text');
+  const defType  = document.getElementById('scan-default-type').value;
+
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> 辨識中…';
+
+  const endpoint =
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=' + apiKey;
+
+  const today = todayStr();
+  const prompt = `你是一個收據辨識助理。請分析這張收據圖片，擷取所有品項資訊。
+只回傳一個合法的 JSON 物件，不要加任何說明文字或 markdown 標記：
+{
+  "merchant": "商家名稱，若看不清楚則留空字串",
+  "date": "YYYY-MM-DD 格式，若看不清楚則使用今天 ${today}",
+  "items": [
+    { "item": "品項名稱（繁體中文）", "category": "從以下選一個：餐飲、交通、購物、娛樂、醫療、水電費、辦公用品、住宿、其他", "price": 金額數字 }
+  ]
+}
+每個購買品項獨立一列。若金額不清楚則填 0。若類別無法判定則填「其他」。`;
+
+  const body = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: currentImageMime, data: currentImageBase64 } },
+        { text: prompt }
+      ]
+    }]
+  };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      var errMsg = '收據辨識失敗（HTTP ' + res.status + '）';
+      try { errMsg += '：' + JSON.parse(errBody).error.message; } catch(x) {}
+      showToast(errMsg, 'error');
+      return;
+    }
+
+    const data = await res.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      showToast('AI 回傳格式無法解析，請改用手動修正。', 'error');
+      return;
+    }
+
+    // Strip markdown fences
+    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(cleaned); }
+    catch(e) {
+      showToast('AI 回傳格式無法解析，請改用手動修正。', 'error');
+      return;
+    }
+
+    if (!parsed.items || !Array.isArray(parsed.items)) {
+      showToast('AI 回傳格式無法解析，請改用手動修正。', 'error');
+      return;
+    }
+
+    const merchant = String(parsed.merchant || '').trim();
+    const date     = /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : today;
+
+    parsed.items.forEach(function(it) {
+      const category = CATEGORIES.includes(it.category) ? it.category : '其他';
+      stagingRows.push({
+        id:       randId(),
+        date:     date,
+        merchant: merchant,
+        type:     defType,
+        category: category,
+        item:     String(it.item || '').trim(),
+        price:    Number(it.price) || 0,
+        currency: 'JPY',
+        notes:    ''
+      });
+    });
+
+    persistStaging();
+    renderStagingCount();
+    showToast('已辨識 ' + parsed.items.length + ' 筆品項，請確認後上傳。', 'success');
+    openModal();
+
+  } catch(e) {
+    showToast('收據辨識失敗：' + (e.message || '請稍後再試'), 'error');
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = 'AI 掃描';
+  }
+}
+
+// ── Manual entry ────────────────────────────────────────
+function addManualRow() {
+  const item = document.getElementById('m-item').value.trim();
+  if (!item) {
+    showToast('請填寫品項名稱。', 'error');
+    document.getElementById('m-item').focus();
+    return;
+  }
+
+  const row = {
+    id:       randId(),
+    date:     document.getElementById('m-date').value    || todayStr(),
+    merchant: document.getElementById('m-merchant').value.trim(),
+    type:     document.getElementById('m-type').value,
+    category: document.getElementById('m-category').value,
+    item:     item,
+    price:    parseFloat(document.getElementById('m-price').value) || 0,
+    currency: document.getElementById('m-currency').value,
+    notes:    document.getElementById('m-notes').value.trim()
+  };
+
+  stagingRows.push(row);
+  persistStaging();
+  renderStagingCount();
+  showToast('已新增至暫存區。', 'success');
+
+  // Reset form (keep date and type)
+  document.getElementById('m-merchant').value = '';
+  document.getElementById('m-item').value     = '';
+  document.getElementById('m-price').value    = '';
+  document.getElementById('m-notes').value    = '';
+}
+
+// ── Staging persistence ─────────────────────────────────
+function persistStaging() {
+  lsSet(LS_STAGING, JSON.stringify(stagingRows));
+}
+
+function renderStagingCount() {
+  const n = stagingRows.length;
+  document.getElementById('staging-count-manual').textContent = n;
+}
+
+// ── Modal ───────────────────────────────────────────────
+function openModal() {
+  renderModalTable();
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function renderModalTable() {
+  const tbody  = document.getElementById('staging-tbody');
+  const empty  = document.getElementById('staging-empty');
+  const btnUp  = document.getElementById('btn-upload');
+  const btnTxt = document.getElementById('btn-upload-text');
+
+  tbody.innerHTML = '';
+  const n = stagingRows.length;
+
+  if (n === 0) {
+    empty.style.display = 'block';
+    document.getElementById('staging-table').style.display = 'none';
+    btnUp.disabled = true;
+    btnTxt.textContent = '送出 0 筆到 Google 試算表';
+    return;
+  }
+
+  empty.style.display = 'none';
+  document.getElementById('staging-table').style.display = '';
+  btnUp.disabled = false;
+  btnTxt.textContent = '送出 ' + n + ' 筆到 Google 試算表';
+
+  stagingRows.forEach(function(row, idx) {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML =
+      '<td><input type="date" value="' + esc(row.date) + '" onchange="updateRow(' + idx + ',\'date\',this.value)"></td>' +
+      '<td><input type="text" value="' + esc(row.merchant) + '" onchange="updateRow(' + idx + ',\'merchant\',this.value)"></td>' +
+      '<td>' + typeSelect(row.type, idx) + '</td>' +
+      '<td>' + categorySelect(row.category, idx) + '</td>' +
+      '<td><input type="text" value="' + esc(row.item) + '" onchange="updateRow(' + idx + ',\'item\',this.value)"></td>' +
+      '<td><input type="number" value="' + esc(row.price) + '" min="0" step="0.01" onchange="updateRow(' + idx + ',\'price\',this.value)"></td>' +
+      '<td>' + currencySelect(row.currency, idx) + '</td>' +
+      '<td><input type="text" value="' + esc(row.notes) + '" onchange="updateRow(' + idx + ',\'notes\',this.value)"></td>' +
+      '<td><button class="btn-icon" onclick="deleteRow(' + idx + ')" title="刪除此列">🗑</button></td>';
+
+    tbody.appendChild(tr);
+  });
+}
+
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function typeSelect(current, idx) {
+  return '<select onchange="updateRow(' + idx + ',\'type\',this.value)">' +
+    ['個人', '家庭'].map(function(t) {
+      return '<option value="' + t + '"' + (t === current ? ' selected' : '') + '>' + t + '</option>';
+    }).join('') + '</select>';
+}
+
+function categorySelect(current, idx) {
+  return '<select onchange="updateRow(' + idx + ',\'category\',this.value)">' +
+    CATEGORIES.map(function(c) {
+      return '<option value="' + c + '"' + (c === current ? ' selected' : '') + '>' + c + '</option>';
+    }).join('') + '</select>';
+}
+
+function currencySelect(current, idx) {
+  const cur = current || 'JPY';
+  return '<select onchange="updateRow(' + idx + ',\'currency\',this.value)" style="min-width:68px;">' +
+    CURRENCIES.map(function(c) {
+      return '<option value="' + c + '"' + (c === cur ? ' selected' : '') + '>' + c + '</option>';
+    }).join('') + '</select>';
+}
+
+function updateRow(idx, field, value) {
+  if (!stagingRows[idx]) return;
+  stagingRows[idx][field] = field === 'price' ? (parseFloat(value) || 0) : value;
+  persistStaging();
+  // Update footer count
+  document.getElementById('btn-upload-text').textContent =
+    '送出 ' + stagingRows.length + ' 筆到 Google 試算表';
+}
+
+function deleteRow(idx) {
+  stagingRows.splice(idx, 1);
+  persistStaging();
+  renderStagingCount();
+  renderModalTable();
+}
+
+function addBlankRow() {
+  const defType = lsGet(LS_TYPE) || '個人';
+  stagingRows.push({
+    id:       randId(),
+    date:     todayStr(),
+    merchant: '',
+    type:     defType,
+    category: '其他',
+    item:     '',
+    price:    0,
+    currency: 'TWD',
+    notes:    ''
+  });
+  persistStaging();
+  renderStagingCount();
+  renderModalTable();
+}
+
+// ── Upload ──────────────────────────────────────────────
+async function uploadStaging() {
+  const scriptUrl = (lsGet(LS_URL) || '').trim();
+  if (!scriptUrl) {
+    showToast('請先在設定頁填寫 Apps Script 網址。', 'error');
+    closeModal();
+    switchPanel('settings');
+    return;
+  }
+
+  // Validate
+  const invalid = stagingRows.some(function(r) { return !String(r.item || '').trim(); });
+  if (invalid) {
+    showToast('有品項欄位未填寫，請確認後再送出。', 'error');
+    return;
+  }
+
+  const btn     = document.getElementById('btn-upload');
+  const btnText = document.getElementById('btn-upload-text');
+  btn.disabled  = true;
+  btnText.textContent = '送出中…';
+
+  const payload = {
+    rows: stagingRows.map(function(r) {
+      return {
+        date:     r.date,
+        merchant: r.merchant,
+        type:     r.type,
+        category: r.category,
+        item:     r.item,
+        price:    parseFloat(r.price) || 0,
+        currency: r.currency || 'JPY',
+        notes:    r.notes
+      };
+    })
+  };
+
+  try {
+    await fetch(scriptUrl, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:    JSON.stringify(payload)
+    });
+
+    stagingRows = [];
+    persistStaging();
+    renderStagingCount();
+    closeModal();
+    showToast('資料已送出，請至 Google 試算表確認是否寫入成功。', 'success');
+
+  } catch(e) {
+    showToast('送出失敗，請確認網路連線與 Apps Script 網址是否正確。', 'error');
+    btn.disabled = false;
+    btnText.textContent = '送出 ' + stagingRows.length + ' 筆到 Google 試算表';
+  }
+}
+
+// ── Toast ───────────────────────────────────────────────
+function showToast(message, type) {
+  type = type || 'info';
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.transition = 'opacity 0.3s';
+    toast.style.opacity = '0';
+    setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 3500);
+}
+</script>
+</body>
+</html>
