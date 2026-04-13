@@ -621,6 +621,10 @@
       .staging-table input[type="date"] { width: 110px; }
       .staging-table input[type="number"] { width: 64px; }
 
+      .modal-footer { flex-wrap: wrap; gap: 8px; }
+      .modal-footer .btn { flex: 1; min-width: 0; }
+      #btn-upload-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
       #toast-container { left: 12px; right: 12px; bottom: 12px; }
       .toast { max-width: 100%; }
     }
@@ -837,6 +841,22 @@
         </div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="settings-group" style="margin-bottom:0;">
+        <div class="settings-group-title">相關連結</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="https://docs.google.com/spreadsheets/d/1_WYqq3P8pQvum7E29FyE9v50S94cMZG2McQmP7HB5kc/edit?gid=766002769#gid=766002769" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration:none;justify-content:flex-start;">
+            <i data-lucide="table" style="width:15px;height:15px;"></i>
+            開啟家計簿 Google 試算表
+          </a>
+          <a href="https://github.com/ericLuTW/kakeibo" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration:none;justify-content:flex-start;">
+            <i data-lucide="github" style="width:15px;height:15px;"></i>
+            GitHub 原始碼
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -883,7 +903,7 @@
       </button>
       <button class="btn btn-primary" id="btn-upload" onclick="uploadStaging()">
         <i data-lucide="upload" style="width:14px;height:14px;"></i>
-        <span id="btn-upload-text">送出 0 筆到 Google 試算表</span>
+        <span id="btn-upload-text">送出 0 筆</span>
       </button>
     </div>
   </div>
@@ -1304,14 +1324,14 @@ function renderModalTable() {
     empty.style.display = 'block';
     document.getElementById('staging-table').style.display = 'none';
     btnUp.disabled = true;
-    btnTxt.textContent = '送出 0 筆到 Google 試算表';
+    btnTxt.textContent = '送出 0 筆';
     return;
   }
 
   empty.style.display = 'none';
   document.getElementById('staging-table').style.display = '';
   btnUp.disabled = false;
-  btnTxt.textContent = '送出 ' + n + ' 筆到 Google 試算表';
+  btnTxt.textContent = '送出 ' + n + ' 筆';
 
   stagingRows.forEach(function(row, idx) {
     const tr = document.createElement('tr');
@@ -1367,7 +1387,7 @@ function updateRow(idx, field, value) {
   persistStaging();
   // Update footer count
   document.getElementById('btn-upload-text').textContent =
-    '送出 ' + stagingRows.length + ' 筆到 Google 試算表';
+    '送出 ' + stagingRows.length + ' 筆';
 }
 
 function deleteRow(idx) {
@@ -1449,7 +1469,7 @@ async function uploadStaging() {
   } catch(e) {
     showToast('送出失敗，請確認網路連線與 Apps Script 網址是否正確。', 'error');
     btn.disabled = false;
-    btnText.textContent = '送出 ' + stagingRows.length + ' 筆到 Google 試算表';
+    btnText.textContent = '送出 ' + stagingRows.length + ' 筆';
   }
 }
 
