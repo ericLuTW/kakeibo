@@ -122,6 +122,16 @@ function setupSheetsIfNeeded() {
   });
 }
 
+// ── Debug entry point: run this directly from the editor to see any errors ─
+// Select "debugRefresh" in the function dropdown at the top of the editor, then
+// click Run. Errors will surface immediately instead of being swallowed by doPost.
+function debugRefresh() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  setupSheetsIfNeeded();
+  refreshSummaries(ss);
+  Logger.log('debugRefresh: done.');
+}
+
 // ── Refresh summary sheets with computed data ─────────────
 function refreshSummaries(ss) {
   var tz = Session.getScriptTimeZone();
@@ -136,11 +146,22 @@ function refreshSummaries(ss) {
 
     var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
 
+    // Coerce any string dates back into Date objects (older rows may have
+    // been written as strings before the date-format fix).
+    function toDate(v) {
+      if (v instanceof Date) return v;
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+        var m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+      return null;
+    }
+
     // ── Monthly summary ──
     var monthlyMap = {};
     data.forEach(function(row) {
-      var d = row[0];
-      if (!(d instanceof Date)) return;
+      var d = toDate(row[0]);
+      if (!d) return;
       var key = d.getFullYear() * 100 + (d.getMonth() + 1); // e.g. 202604
       if (!monthlyMap[key]) monthlyMap[key] = {};
       var cat = String(row[2] || '其他');
@@ -165,14 +186,18 @@ function refreshSummaries(ss) {
 
     // ── Daily summary ──
     var dailyMap = {};
+    var skippedDaily = 0;
     data.forEach(function(row) {
-      var d = row[0];
-      if (!(d instanceof Date)) return;
+      var d = toDate(row[0]);
+      if (!d) { skippedDaily++; return; }
       var key = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
       if (!dailyMap[key]) dailyMap[key] = {};
       var cat = String(row[2] || '其他');
       dailyMap[key][cat] = (dailyMap[key][cat] || 0) + (Number(row[4]) || 0);
     });
+    if (skippedDaily > 0) {
+      Logger.log('refreshSummaries: ' + type + ' daily skipped ' + skippedDaily + ' rows (bad date).');
+    }
 
     var dailyKeys = Object.keys(dailyMap).sort();
     var dHeaders = ['日期'].concat(CATEGORIES).concat(['合計']);
@@ -191,23 +216,41 @@ function refreshSummaries(ss) {
 }
 
 function writeSheet(ss, sheetName, headers, rows) {
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return;
+  // Summary sheets are purely derived — delete & recreate each run so any
+  // leftover state (column groups, protected ranges, trimmed columns,
+  // banding, filters) from older versions of the script can't block writes.
+  var existing = ss.getSheetByName(sheetName);
+  if (existing) {
+    ss.deleteSheet(existing);
+  }
+  var sheet = ss.insertSheet(sheetName);
 
-  sheet.clearContents();
   var numCols = headers.length;
 
   // Header row
   sheet.getRange(1, 1, 1, numCols).setValues([headers]);
   sheet.getRange(1, 1, 1, numCols).setFontWeight('bold');
-  sheet.setFrozenRows(1);
+
+  // Freezing is cosmetic — never let it kill the write.
+  try { sheet.setFrozenRows(1); } catch (e) {
+    Logger.log('writeSheet: setFrozenRows failed on ' + sheetName + ': ' + e);
+  }
 
   // Data rows
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, numCols).setValues(rows);
-    // Format number columns (category columns + total)
-    sheet.getRange(2, 3, rows.length, CATEGORIES.length + 1).setNumberFormat('0.00');
+    // Format the numeric block (category columns + 合計). Computed from the
+    // right edge so it works for both 月報 (prefix: 年, 月) and 日報 (prefix: 日期).
+    try {
+      var numericWidth = CATEGORIES.length + 1;
+      var numericStart = numCols - numericWidth + 1;
+      sheet.getRange(2, numericStart, rows.length, numericWidth).setNumberFormat('0.00');
+    } catch (e) {
+      Logger.log('writeSheet: setNumberFormat failed on ' + sheetName + ': ' + e);
+    }
   }
+
+  Logger.log('writeSheet: ' + sheetName + ' wrote ' + rows.length + ' rows.');
 }
 
 function writeSummaryHeaders(ss, type) {
