@@ -64,17 +64,17 @@ function doPost(e) {
 
     ['個人', '家庭'].forEach(function(name) {
       if (!grouped[name].length) return;
-      var sheet = ss.getSheetByName(name);
-      var startRow = sheet.getLastRow() + 1;
-      sheet.getRange(startRow, 1, grouped[name].length, 7).setValues(grouped[name]);
-      sheet.getRange(startRow, 1, grouped[name].length, 1).setNumberFormat('yyyy-mm-dd');
-      sheet.getRange(startRow, 5, grouped[name].length, 1).setNumberFormat('0.00');
+      try {
+        var sheet = ss.getSheetByName(name);
+        var startRow = sheet.getLastRow() + 1;
+        sheet.getRange(startRow, 1, grouped[name].length, 7).setValues(grouped[name]);
+        sheet.getRange(startRow, 1, grouped[name].length, 1).setNumberFormat('yyyy-mm-dd');
+        sheet.getRange(startRow, 5, grouped[name].length, 1).setNumberFormat('0.00');
 
-      // Sort all data rows by date ascending
-      var totalRows = sheet.getLastRow() - 1;
-      if (totalRows > 0) {
-        if (sheet.getFilter()) sheet.getFilter().remove();
-        sheet.getRange(2, 1, totalRows, 7).sort({ column: 1, ascending: true });
+        sortRawSheetByDate(sheet);
+        Logger.log('doPost: wrote and sorted ' + grouped[name].length + ' rows for ' + name + '.');
+      } catch (err) {
+        Logger.log('doPost: error processing ' + name + ': ' + err);
       }
     });
 
@@ -133,87 +133,111 @@ function debugRefresh() {
   Logger.log('debugRefresh: done.');
 }
 
+function sortRawSheetByDate(sheet) {
+  var totalRows = sheet.getLastRow() - 1;
+  if (totalRows <= 1) return;
+
+  var range = sheet.getRange(2, 1, totalRows, 7);
+  var values = range.getValues();
+
+  values.sort(function(a, b) {
+    var aTime = rawRowDateTime(a[0]);
+    var bTime = rawRowDateTime(b[0]);
+    if (aTime === bTime) return 0;
+    if (aTime === null) return 1;
+    if (bTime === null) return -1;
+    return aTime - bTime;
+  });
+
+  range.setValues(values);
+  sheet.getRange(2, 1, totalRows, 1).setNumberFormat('yyyy-mm-dd');
+  sheet.getRange(2, 5, totalRows, 1).setNumberFormat('0.00');
+}
+
+function rawRowDateTime(value) {
+  var d = normalizeStoredDate(value);
+  return d ? d.getTime() : null;
+}
+
+function normalizeStoredDate(value) {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    var m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  }
+  return null;
+}
+
 // ── Refresh summary sheets with computed data ─────────────
 function refreshSummaries(ss) {
   var tz = Session.getScriptTimeZone();
 
   ['個人', '家庭'].forEach(function(type) {
     try {
-    var sheet = ss.getSheetByName(type);
-    if (!sheet || sheet.getLastRow() < 2) {
-      // No data — write headers only
-      writeSummaryHeaders(ss, type);
-      return;
-    }
-
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
-
-    // Coerce any string dates back into Date objects (older rows may have
-    // been written as strings before the date-format fix).
-    function toDate(v) {
-      if (v instanceof Date) return v;
-      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
-        var m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var sheet = ss.getSheetByName(type);
+      if (!sheet || sheet.getLastRow() < 2) {
+        // No data — write headers only
+        writeSummaryHeaders(ss, type);
+        return;
       }
-      return null;
-    }
 
-    // ── Monthly summary ──
-    var monthlyMap = {};
-    data.forEach(function(row) {
-      var d = toDate(row[0]);
-      if (!d) return;
-      var key = d.getFullYear() * 100 + (d.getMonth() + 1); // e.g. 202604
-      if (!monthlyMap[key]) monthlyMap[key] = {};
-      var cat = String(row[2] || '其他');
-      monthlyMap[key][cat] = (monthlyMap[key][cat] || 0) + (Number(row[4]) || 0);
-    });
+      var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
 
-    var monthlyKeys = Object.keys(monthlyMap).map(Number).sort(function(a, b) { return a - b; });
-    var mHeaders = ['年', '月'].concat(CATEGORIES).concat(['合計']);
-    var mRows = monthlyKeys.map(function(key) {
-      var year = Math.floor(key / 100);
-      var month = key % 100;
-      var total = 0;
-      var catValues = CATEGORIES.map(function(cat) {
-        var val = monthlyMap[key][cat] || 0;
-        total += val;
-        return val;
+      // ── Monthly summary ──
+      var monthlyMap = {};
+      data.forEach(function(row) {
+        var d = normalizeStoredDate(row[0]);
+        if (!d) return;
+        var key = d.getFullYear() * 100 + (d.getMonth() + 1); // e.g. 202604
+        if (!monthlyMap[key]) monthlyMap[key] = {};
+        var cat = String(row[2] || '其他');
+        monthlyMap[key][cat] = (monthlyMap[key][cat] || 0) + (Number(row[4]) || 0);
       });
-      return [year, month].concat(catValues).concat([total]);
-    });
 
-    writeSheet(ss, type + '－月報', mHeaders, mRows);
-
-    // ── Daily summary ──
-    var dailyMap = {};
-    var skippedDaily = 0;
-    data.forEach(function(row) {
-      var d = toDate(row[0]);
-      if (!d) { skippedDaily++; return; }
-      var key = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
-      if (!dailyMap[key]) dailyMap[key] = {};
-      var cat = String(row[2] || '其他');
-      dailyMap[key][cat] = (dailyMap[key][cat] || 0) + (Number(row[4]) || 0);
-    });
-    if (skippedDaily > 0) {
-      Logger.log('refreshSummaries: ' + type + ' daily skipped ' + skippedDaily + ' rows (bad date).');
-    }
-
-    var dailyKeys = Object.keys(dailyMap).sort();
-    var dHeaders = ['日期'].concat(CATEGORIES).concat(['合計']);
-    var dRows = dailyKeys.map(function(key) {
-      var total = 0;
-      var catValues = CATEGORIES.map(function(cat) {
-        var val = dailyMap[key][cat] || 0;
-        total += val;
-        return val;
+      var monthlyKeys = Object.keys(monthlyMap).map(Number).sort(function(a, b) { return a - b; });
+      var mHeaders = ['年', '月'].concat(CATEGORIES).concat(['合計']);
+      var mRows = monthlyKeys.map(function(key) {
+        var year = Math.floor(key / 100);
+        var month = key % 100;
+        var total = 0;
+        var catValues = CATEGORIES.map(function(cat) {
+          var val = monthlyMap[key][cat] || 0;
+          total += val;
+          return val;
+        });
+        return [year, month].concat(catValues).concat([total]);
       });
-      return [key].concat(catValues).concat([total]);
-    });
 
-    writeSheet(ss, type + '－日報', dHeaders, dRows);
+      writeSheet(ss, type + '－月報', mHeaders, mRows);
+
+      // ── Daily summary ──
+      var dailyMap = {};
+      var skippedDaily = 0;
+      data.forEach(function(row) {
+        var d = normalizeStoredDate(row[0]);
+        if (!d) { skippedDaily++; return; }
+        var key = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+        if (!dailyMap[key]) dailyMap[key] = {};
+        var cat = String(row[2] || '其他');
+        dailyMap[key][cat] = (dailyMap[key][cat] || 0) + (Number(row[4]) || 0);
+      });
+      if (skippedDaily > 0) {
+        Logger.log('refreshSummaries: ' + type + ' daily skipped ' + skippedDaily + ' rows (bad date).');
+      }
+
+      var dailyKeys = Object.keys(dailyMap).sort();
+      var dHeaders = ['日期'].concat(CATEGORIES).concat(['合計']);
+      var dRows = dailyKeys.map(function(key) {
+        var total = 0;
+        var catValues = CATEGORIES.map(function(cat) {
+          var val = dailyMap[key][cat] || 0;
+          total += val;
+          return val;
+        });
+        return [key].concat(catValues).concat([total]);
+      });
+
+      writeSheet(ss, type + '－日報', dHeaders, dRows);
     } catch (err) {
       Logger.log('refreshSummaries: error processing ' + type + ': ' + err);
     }
