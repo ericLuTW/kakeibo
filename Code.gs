@@ -73,6 +73,7 @@ function doPost(e) {
       // Sort all data rows by date ascending
       var totalRows = sheet.getLastRow() - 1;
       if (totalRows > 0) {
+        if (sheet.getFilter()) sheet.getFilter().remove();
         sheet.getRange(2, 1, totalRows, 7).sort({ column: 1, ascending: true });
       }
     });
