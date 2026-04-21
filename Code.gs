@@ -137,6 +137,7 @@ function refreshSummaries(ss) {
   var tz = Session.getScriptTimeZone();
 
   ['個人', '家庭'].forEach(function(type) {
+    try {
     var sheet = ss.getSheetByName(type);
     if (!sheet || sheet.getLastRow() < 2) {
       // No data — write headers only
@@ -212,6 +213,9 @@ function refreshSummaries(ss) {
     });
 
     writeSheet(ss, type + '－日報', dHeaders, dRows);
+    } catch (err) {
+      Logger.log('refreshSummaries: error processing ' + type + ': ' + err);
+    }
   });
 }
 
@@ -222,6 +226,10 @@ function writeSheet(ss, sheetName, headers, rows) {
   var existing = ss.getSheetByName(sheetName);
   if (existing) {
     ss.deleteSheet(existing);
+    // Flush so the deletion is committed to the spreadsheet registry before
+    // insertSheet looks up available names — without this, rapid sequences of
+    // delete+insert can fail because the old name still appears "taken".
+    SpreadsheetApp.flush();
   }
   var sheet = ss.insertSheet(sheetName);
 
